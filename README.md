@@ -1,61 +1,231 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Cloud Kitchen Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A comprehensive RESTful API for cloud kitchen management system built with Laravel 12, featuring modern PHP practices, queue-based processing, and comprehensive testing.
 
-## About Laravel
+## 🚀 Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Authentication & Authorization**: Laravel Sanctum-based token authentication
+- **Menu Management**: CRUD operations with soft deletes and availability tracking
+- **Order Processing**: Complete order lifecycle management with status tracking
+- **Payment Integration**: Secure payment processing with queue-based handling
+- **Invoice Generation**: Automated invoice creation and management
+- **Real-time Notifications**: Queue-based email and database notifications
+- **Comprehensive Testing**: Unit and feature tests with high coverage
+- **API Documentation**: Detailed OpenAPI-style documentation
+- **Modern Laravel 12**: Latest features including typed properties, enums, and more
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📋 Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Composer
+- SQLite (default) or MySQL/PostgreSQL
+- Redis (for queues and caching)
 
-## Learning Laravel
+## 🛠️ Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd cloud-kitchen-backend
+   ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+2. **Install dependencies**
+   ```bash
+   composer install
+   npm install
+   ```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+3. **Environment setup**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-## Laravel Sponsors
+4. **Database setup**
+   ```bash
+   php artisan migrate
+   php artisan db:seed
+   ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+5. **Start the development server**
+   ```bash
+   php artisan serve
+   ```
 
-### Premium Partners
+6. **Start queue worker (in separate terminal)**
+   ```bash
+   php artisan queue:work
+   ```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 🧪 Testing
 
-## Contributing
+Run the test suite:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+# Run all tests
+php artisan test
 
-## Code of Conduct
+# Run with coverage
+php artisan test --coverage
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Run specific test file
+php artisan test tests/Feature/AuthTest.php
+```
 
-## Security Vulnerabilities
+## 📚 API Documentation
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+See the complete API documentation in `docs/api.md` or visit `/api/test` to verify the API is working.
 
-## License
+### Quick Start
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. **Register a user**
+   ```bash
+   curl -X POST http://localhost:8000/api/register \
+     -H "Content-Type: application/json" \
+     -d '{"name":"John Doe","email":"john@example.com","password":"password123","password_confirmation":"password123"}'
+   ```
+
+2. **Login**
+   ```bash
+   curl -X POST http://localhost:8000/api/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"john@example.com","password":"password123"}'
+   ```
+
+3. **Use the token for authenticated requests**
+   ```bash
+   curl -X GET http://localhost:8000/api/profile \
+     -H "Authorization: Bearer YOUR_TOKEN_HERE"
+   ```
+
+## 🏗️ Project Structure
+
+```
+app/
+├── Http/
+│   ├── Controllers/          # API controllers
+│   ├── Requests/            # Form request validation
+│   └── Resources/           # API resource transformers
+├── Models/                  # Eloquent models
+├── Jobs/                    # Queue jobs
+├── Notifications/           # Notification classes
+└── Exceptions/              # Exception handling
+
+database/
+├── factories/              # Model factories
+├── migrations/              # Database migrations
+└── seeders/                 # Database seeders
+
+tests/
+├── Feature/                # Feature tests
+└── Unit/                   # Unit tests
+
+docs/                       # API documentation
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Key environment variables in `.env`:
+
+```env
+APP_NAME="Cloud Kitchen API"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+```
+
+### Queue Configuration
+
+The application uses database queues by default. To use Redis:
+
+```env
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+## 📊 Models & Relationships
+
+### User
+- `orders()` - Has many orders
+- `payments()` - Has many payments
+- `invoices()` - Has many invoices
+
+### Menu
+- `orderItems()` - Has many order items
+- Soft deletes enabled
+- `available` scope for filtering
+
+### Order
+- `items()` - Has many order items
+- `user()` - Belongs to user
+- `payments()` - Has many payments
+- `invoice()` - Has one invoice
+
+### OrderItem
+- `menu()` - Belongs to menu
+- `order()` - Belongs to order
+- `subtotal` accessor
+
+## 🔄 Queue Jobs
+
+- `ProcessOrderPayment` - Handles payment processing
+- `SendOrderNotification` - Sends order status notifications
+
+## 🔔 Notifications
+
+- `OrderStatusChanged` - Notifies users of order status changes
+- `NewOrderPlaced` - Notifies admin of new orders
+
+## 🛡️ Security Features
+
+- Token-based authentication with Laravel Sanctum
+- Request validation with Form Requests
+- SQL injection prevention with Eloquent ORM
+- Rate limiting on API endpoints
+- Proper error handling and logging
+
+## 📈 Performance Optimizations
+
+- Database query optimization with eager loading
+- API response caching where appropriate
+- Queue-based background processing
+- Pagination for large datasets
+- Soft deletes for data recovery
+
+## 🧰 Development Tools
+
+- Laravel Pint for code formatting
+- Laravel Telescope for debugging (optional)
+- Laravel Horizon for queue monitoring (optional)
+- Comprehensive logging
+
+## 📝 License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite
+6. Submit a pull request
+
+## 📞 Support
+
+For questions and support, please open an issue in the repository or contact the development team.
+
+---
+
+**Built with ❤️ using Laravel 12**

@@ -1,0 +1,171 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cloud_kitchen_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, bcmath, pdo_mysql, redis
+        coverage: xdebug
+
+    - name: Copy environment file
+      run: cp .env.example .env
+
+    - name: Install dependencies
+      run: composer install --no-progress --no-interaction --prefer-dist --optimize-autoloader
+
+    - name: Generate application key
+      run: php artisan key:generate
+
+    - name: Run migrations
+      run: php artisan migrate --force
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: cloud_kitchen_test
+        DB_USERNAME: root
+        DB_PASSWORD: root
+
+    - name: Run tests
+      run: php artisan test --coverage --log-junit junit.xml
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: cloud_kitchen_test
+        DB_USERNAME: root
+        DB_PASSWORD: root
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: junit.xml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.prod
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/cloud-kitchen-api:latest
+          ${{ secrets.DOCKER_USERNAME }}/cloud-kitchen-api:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to production server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PROD_HOST }}
+        username: ${{ secrets.PROD_USER }}
+        key: ${{ secrets.PROD_SSH_KEY }}
+        script: |
+          cd /var/www/cloud-kitchen-api
+          
+          # Pull latest code
+          git pull origin main
+          
+          # Pull latest Docker image
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cloud-kitchen-api:latest
+          
+          # Stop existing containers
+          docker-compose -f docker-compose.prod.yml down
+          
+          # Start new containers
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # Run migrations
+          docker-compose -f docker-compose.prod.yml exec app php artisan migrate --force
+          
+          # Clear caches
+          docker-compose -f docker-compose.prod.yml exec app php artisan config:clear
+          docker-compose -f docker-compose.prod.yml exec app php artisan cache:clear
+          docker-compose -f docker-compose.prod.yml exec app php artisan route:clear
+          docker-compose -f docker-compose.prod.yml exec app php artisan view:clear
+          
+          # Optimize for production
+          docker-compose -f docker-compose.prod.yml exec app php artisan config:cache
+          docker-compose -f docker-compose.prod.yml exec app php artisan route:cache
+          docker-compose -f docker-compose.prod.yml exec app php artisan view:cache
+          
+          # Restart queue workers
+          docker-compose -f docker-compose.prod.yml exec queue-worker php artisan queue:restart
+
+  health-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Wait for deployment
+      run: sleep 30
+
+    - name: Health check
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://your-domain.com/api/health)
+        if [ $response -eq 200 ]; then
+          echo "Deployment successful!"
+        else
+          echo "Deployment failed - health check returned $response"
+          exit 1
+        fi
+
+    - name: Notify team
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        message: |
+          Deployment to production ${{ job.status }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref }}

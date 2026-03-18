@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: cloud-kitchen-api-prod
+    restart: always
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php.prod.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./storage/logs:/var/log/apache2
+    networks:
+      - cloud-kitchen-prod
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=mysql
+      - DB_DATABASE=cloud_kitchen_prod
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - MAIL_DRIVER=${MAIL_DRIVER}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+
+  mysql:
+    image: mysql:8.0
+    container_name: cloud-kitchen-mysql-prod
+    restart: always
+    environment:
+      MYSQL_DATABASE: cloud_kitchen_prod
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+      - ./docker/mysql.prod.cnf:/etc/mysql/conf.d/mysql.cnf
+      - ./backups:/backups
+    networks:
+      - cloud-kitchen-prod
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-kitchen-redis-prod
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+      - ./docker/redis.prod.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - cloud-kitchen-prod
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  nginx:
+    image: nginx:alpine
+    container_name: cloud-kitchen-nginx-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./docker/ssl:/etc/nginx/ssl
+      - ./storage/logs/nginx:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - cloud-kitchen-prod
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: cloud-kitchen-queue-prod
+    restart: always
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php.prod.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - cloud-kitchen-prod
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - QUEUE_CONNECTION=redis
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: cloud-kitchen-scheduler-prod
+    restart: always
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php.prod.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - cloud-kitchen-prod
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+    command: php artisan schedule:work
+
+volumes:
+  mysql_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+
+networks:
+  cloud-kitchen-prod:
+    driver: bridge

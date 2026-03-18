@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Payment;
+use Illuminate\Http\Response;
 
 class PaymentController extends Controller
 {
@@ -23,5 +24,21 @@ class PaymentController extends Controller
         ]);
 
         return $payment;
+    }
+
+    public function index()
+    {
+        return response()->json(Payment::all(), Response::HTTP_OK);
+    }
+
+    public function show(Payment $payment)
+    {
+        return response()->json($payment, Response::HTTP_OK);
+    }
+
+    public function destroy(Payment $payment)
+    {
+        $payment->delete();
+        return response()->json(['message' => 'Payment deleted (soft)'], Response::HTTP_OK);
     }
 }
