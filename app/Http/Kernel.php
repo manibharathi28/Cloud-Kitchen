@@ -42,8 +42,6 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // Ensure frontend requests are stateful for Sanctum
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             // Rate limiting
             'throttle:api',
             // Performance monitoring

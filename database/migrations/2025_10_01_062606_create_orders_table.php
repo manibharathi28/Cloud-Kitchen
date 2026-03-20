@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->enum('type', ['single', 'bulk'])->default('single');
             $table->dateTime('scheduled_for')->nullable();
             $table->decimal('total_amount', 10, 2)->default(0);
-            $table->enum('status', ['pending', 'processing', 'completed', 'cancelled'])->default('pending');
+            $table->enum('status', ['pending', 'preparing', 'ready', 'processing', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

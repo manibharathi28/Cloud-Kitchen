@@ -15,19 +15,20 @@ use Illuminate\Http\Request;
 //     ], 405);
 // })->name('login');
 
+Route::get('/', function () {
+    return response()->json([
+        'message' => 'Cloud Kitchen API',
+        'version' => '1.0.0',
+        'status' => 'running'
+    ]);
+});
+
 Route::get('/test', function () {
     return response()->json(['message' => 'API works in browser!']);
 });
 
 // Public Auth Routes (api)
 Route::post('register', [AuthController::class, 'register']);
-// Route::post('/login', [AuthController::class, 'login']);
+Route::post('login', [AuthController::class, 'login']);
 
-// Protected Routes (use sanctum)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/menu', [MenuController::class, 'index']);
-    Route::apiResource('orders', OrderController::class);
-    Route::post('payments', [PaymentController::class, 'process']);
-    Route::get('invoices/{order_id}', [InvoiceController::class, 'download']);
-    Route::get('reports/sales-summary', [ReportController::class, 'salesSummary']);
-});
+// All API routes moved to api.php for consistency
